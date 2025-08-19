@@ -1,9 +1,123 @@
-<!doctype html>
-<html>
-  <head><meta charset="utf-8"><title>unGPT Test</title></head>
-  <body>
-    <h1>It works 🎉</h1>
-    <p>If you see this, GitHub Pages is serving HTML correctly.</p>
-  </body>
-</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>unGPT — turn long dashes into -</title>
+  <style>
+    :root { --bg:#0b0c10; --card:#12141a; --muted:#a2a7b5; --fg:#e8ecf1; --accent:#6ee7b7; --accent-2:#60a5fa; }
+    *{box-sizing:border-box}
+    body{margin:0;background:linear-gradient(180deg,var(--bg),#0e1117);color:var(--fg);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,"Helvetica Neue",Arial,"Apple Color Emoji","Segoe UI Emoji"}
+    .wrap{max-width:980px;margin:40px auto;padding:0 20px}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    h1{font-size:28px;margin:0;letter-spacing:0.2px}
+    .tag{font-size:12px;padding:4px 8px;border-radius:999px;background:rgba(110,231,183,.16);color:var(--accent);border:1px solid rgba(110,231,183,.35)}
+    .card{background:var(--card);border:1px solid #202534;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);overflow:hidden}
+    .row{display:grid;grid-template-columns:1fr;gap:16px;padding:16px}
+    @media(min-width:900px){.row{grid-template-columns:1fr 1fr}}
+    label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted)}
+    textarea{width:100%;min-height:240px;resize:vertical;background:#0f1218;color:var(--fg);border:1px solid #1f2632;border-radius:12px;padding:12px 14px;font:14px/1.45 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .controls{display:flex;flex-wrap:wrap;gap:10px;padding:12px 16px;border-top:1px solid #1f2632;background:#0e1117}
+    button{appearance:none;border:1px solid #243042;background:#161b22;color:var(--fg);padding:10px 14px;border-radius:10px;font-weight:600;cursor:pointer;transition:transform .04s ease, border-color .2s ease}
+    button:hover{border-color:#2f3c50}
+    button:active{transform:translateY(1px)}
+    .primary{background:linear-gradient(90deg,var(--accent),var(--accent-2));color:#0b0c10;border:0}
+    .muted{color:var(--muted)}
+    .spacer{flex:1}
+    .footer{padding:12px 16px;color:var(--muted);font-size:12px;border-top:1px solid #1f2632;background:#0e1117}
+    .pill{display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border:1px dashed #2a3344;border-radius:999px}
+    .count{font-variant-numeric:tabular-nums}
+    .small{font-size:12px;color:var(--muted)}
+    .kbd{font:12px/1.1 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;background:#0c0f14;border:1px solid #1c2633;border-bottom-color:#141a22;padding:2px 6px;border-radius:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>unGPT</h1>
+      <span class="tag">long dashes → <strong>-</strong></span>
+    </header>
 
+    <section class="card">
+      <div class="row">
+        <div>
+          <label for="input">
+            <span>Paste your text</span>
+            <span class="pill"><span>Replacements so far:</span> <span class="count" id="count">0</span></span>
+          </label>
+          <textarea id="input" placeholder="Paste text here… (Cmd/Ctrl + V)"></textarea>
+          <div class="small" style="margin-top:8px">Targets: em dash (—), en dash (–), and sequences of two or more hyphens (<span class="kbd">--</span>, <span class="kbd">---</span>, …) → replaced with a single <strong>-</strong>.</div>
+        </div>
+        <div>
+          <label for="output"><span>Cleaned output</span></label>
+          <textarea id="output" placeholder="Your cleaned text will appear here…" readonly></textarea>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="convert">Convert (⌘/Ctrl + Enter)</button>
+        <button id="copy">Copy output</button>
+        <button id="swap">Swap ↔</button>
+        <div class="spacer"></div>
+        <button class="muted" id="clear">Clear</button>
+      </div>
+      <div class="footer">
+        Tip: It auto-converts when you paste. You can also drag a <code>.txt</code> file onto the left box.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const input = $('#input');
+    const output = $('#output');
+    const countEl = $('#count');
+
+    function ungpt(text){
+      if(!text) return '';
+      let replaced = text
+        .replace(/[\u2014\u2015]/g, '-')  // em dash & horizontal bar
+        .replace(/[\u2013]/g, '-')       // en dash
+        .replace(/-{2,}/g, '-');         // 2+ hyphens
+      const matches = text.match(/[\u2014\u2015\u2013]|-{2,}/g);
+      countEl.textContent = matches ? matches.length : 0;
+      return replaced;
+    }
+
+    function convert(){
+      output.value = ungpt(input.value);
+      output.focus();
+      output.select();
+    }
+
+    document.getElementById('convert').addEventListener('click', convert);
+    document.getElementById('copy').addEventListener('click', async () => {
+      if(!output.value) return;
+      try { await navigator.clipboard.writeText(output.value); } catch(e) {}
+    });
+    document.getElementById('swap').addEventListener('click', () => {
+      const a = input.value, b = output.value;
+      input.value = b; output.value = a;
+      countEl.textContent = 0;
+      input.focus();
+    });
+    document.getElementById('clear').addEventListener('click', () => {
+      input.value = ''; output.value=''; countEl.textContent = 0; input.focus();
+    });
+    document.getElementById('input').addEventListener('paste', () => requestAnimationFrame(convert));
+    document.addEventListener('keydown', (e) => {
+      if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); convert(); }
+    });
+    ['dragenter','dragover','dragleave','drop'].forEach(evt => {
+      document.getElementById('input').addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); });
+    });
+    document.getElementById('input').addEventListener('drop', async (e) => {
+      const f = [...e.dataTransfer.files][0];
+      if(!f || !f.name.endsWith('.txt')) return;
+      const text = await f.text();
+      input.value = text;
+      convert();
+    });
+    document.getElementById('input').focus();
+  </script>
+</body>
+</html>
