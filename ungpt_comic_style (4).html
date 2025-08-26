@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>unGPT — turn long dashes into -</title>
+  <style>
+    :root {
+      --bg:#fff8e7; 
+      --card:#fff;
+      --fg:#111;
+      --muted:#444;
+      --accent:#ff3860;
+      --accent-2:#fecd1a;
+      --accent-3:#1e90ff;
+    }
+    *{box-sizing:border-box}
+    html, body {
+      max-width: 100%;
+      overflow-x: hidden;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font:16px/1.4 "Comic Sans MS", "Chalkboard SE", system-ui, sans-serif;
+      transition: background 0.4s ease;
+    }
+    .wrap{
+      max-width:980px;
+      margin:20px auto;
+      padding:0 10px;
+      width:100%;
+    }
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+    h1{
+      font-size:36px;margin:0;letter-spacing:1px;color:var(--accent);
+      text-shadow:2px 2px 0 var(--accent-2), -2px -2px 0 var(--accent-3);
+      font-weight:900;
+    }
+    .tag{
+      font-size:14px;padding:6px 10px;border-radius:8px;background:var(--accent-2);
+      color:#000;font-weight:bold;border:2px solid #000;box-shadow:2px 2px 0 #000;
+    }
+    .card{
+      background:var(--card);border:3px solid #000;border-radius:12px;box-shadow:6px 6px 0 #000;overflow:hidden;width:100%;max-width:100%;
+    }
+    .row{display:grid;grid-template-columns:1fr;gap:16px;padding:16px}
+    @media(min-width:900px){.row{grid-template-columns:1fr 1fr}}
+    label{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--muted);font-weight:bold}
+    textarea, input, select {
+      width:100%;
+      min-height:240px;
+      resize:vertical;
+      background:#fdfdfd;
+      color:var(--fg);
+      border:2px solid #000;
+      border-radius:8px;
+      padding:12px 14px;
+      font:16px/1.45 monospace !important; /* Prevent Chrome auto-zoom */
+      box-shadow:3px 3px 0 #000;
+    }
+    .controls{display:flex;flex-wrap:wrap;gap:10px;padding:12px 16px;border-top:3px solid #000;background:#f5f5f5}
+    button{
+      appearance:none;border:2px solid #000;background:var(--accent-3);color:#fff;
+      padding:10px 14px;border-radius:8px;font-weight:900;cursor:pointer;box-shadow:3px 3px 0 #000;
+      transition:transform .1s ease;text-transform:uppercase
+    }
+    button:hover{transform:translateY(-2px)}
+    button:active{transform:translateY(2px)}
+    .primary{background:var(--accent);color:#fff}
+    .muted{background:#ccc;color:#000}
+    .spacer{flex:1}
+    .footer{
+      padding:12px 16px;color:var(--muted);font-size:13px;border-top:3px solid #000;background:#fff8e7;font-style:italic;text-align:center
+    }
+    .pill{
+      display:inline-flex;gap:6px;align-items:center;padding:6px 10px;border:2px dashed #000;border-radius:8px;
+      background:var(--accent-2);color:#000;font-weight:bold
+    }
+    .count{font-variant-numeric:tabular-nums;display:inline-block;transition:transform 0.3s ease, color 0.3s ease}
+    .small{font-size:12px;color:var(--muted)}
+    .kbd-inline{font:14px monospace;}
+    .bounce{transform:scale(1.4);color:var(--accent)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>unGPT!</h1>
+      <span class="tag">Long dashes → <strong>-</strong></span>
+    </header>
+
+    <section class="card">
+      <div class="row">
+        <div>
+          <label for="input">
+            <span>Paste your text</span>
+            <span class="pill">Replacements: <span class="count" id="count">0</span></span>
+          </label>
+          <textarea id="input" placeholder="Paste text here… (Cmd/Ctrl + V)"></textarea>
+          <div class="small" style="margin-top:8px">
+            Targets: em dash (—), en dash (–), and 2+ hyphens (<span class="kbd-inline">--</span>, <span class="kbd-inline">---</span>) → replaced with a single -.
+          </div>
+        </div>
+        <div>
+          <label for="output"><span>Cleaned output</span></label>
+          <textarea id="output" placeholder="Your cleaned text will appear here…" readonly></textarea>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="convert">Convert ⚡</button>
+        <button id="copy">Copy 📋</button>
+        <button id="swap">Swap ↔</button>
+        <div class="spacer"></div>
+        <button class="muted" id="clear">Clear ❌</button>
+      </div>
+      <div class="footer" id="footer-msg">
+        💡 Tip: It auto-converts when you paste. You can also drag a <code>.txt</code> file onto the left box.
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const input = $('#input');
+    const output = $('#output');
+    const countEl = $('#count');
+    const footerMsg = $('#footer-msg');
+
+    const funMessages = [
+      "Another dash bites the dust ⚡",
+      "Down with em-dashes!",
+      "You just fixed a ChatGPT tell 👀",
+      "Victory! The dash is gone 🏆"
+    ];
+
+    function ungpt(text){
+      if(!text) return '';
+      let replaced = text
+        .replace(/[\u2014\u2015]/g, '-')
+        .replace(/[\u2013]/g, '-')
+        .replace(/-{2,}/g, '-');
+      const matches = text.match(/[\u2014\u2015\u2013]|-{2,}/g);
+      const count = matches ? matches.length : 0;
+      if(count > 0){
+        countEl.textContent = count;
+        countEl.classList.add('bounce');
+        setTimeout(()=> countEl.classList.remove('bounce'), 400);
+        footerMsg.textContent = funMessages[Math.floor(Math.random()*funMessages.length)];
+        document.body.style.background = `hsl(${Math.floor(Math.random()*360)}, 100%, 90%)`;
+      }
+      return replaced;
+    }
+
+    function convert(){
+      output.value = ungpt(input.value);
+      output.focus();
+      output.select();
+    }
+
+    document.getElementById('convert').addEventListener('click', convert);
+    document.getElementById('copy').addEventListener('click', async () => {
+      if(!output.value) return;
+      try { await navigator.clipboard.writeText(output.value); } catch(e) {}
+    });
+    document.getElementById('swap').addEventListener('click', () => {
+      const a = input.value, b = output.value;
+      input.value = b; output.value = a;
+      countEl.textContent = 0;
+      input.focus();
+    });
+    document.getElementById('clear').addEventListener('click', () => {
+      input.value = ''; output.value=''; countEl.textContent = 0; input.focus();
+      footerMsg.textContent = "💡 Tip: It auto-converts when you paste. You can also drag a .txt file onto the left box.";
+    });
+    document.getElementById('input').addEventListener('paste', () => requestAnimationFrame(convert));
+    document.addEventListener('keydown', (e) => {
+      if((e.metaKey || e.ctrlKey) && e.key === 'Enter'){ e.preventDefault(); convert(); }
+    });
+    ['dragenter','dragover','dragleave','drop'].forEach(evt => {
+      document.getElementById('input').addEventListener(evt, (e)=>{ e.preventDefault(); e.stopPropagation(); });
+    });
+    document.getElementById('input').addEventListener('drop', async (e) => {
+      const f = [...e.dataTransfer.files][0];
+      if(!f || !f.name.endsWith('.txt')) return;
+      const text = await f.text();
+      input.value = text;
+      convert();
+    });
+    document.getElementById('input').focus();
+  </script>
+</body>
+</html>
